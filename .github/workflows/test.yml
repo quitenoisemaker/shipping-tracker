@@ -1,0 +1,43 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: [ '8.1', '8.2', '8.3' ]
+        laravel: [ '10.*', '11.*' ]
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, xml, sqlite
+          coverage: none
+
+      - name: Install Dependencies
+        run: composer require "illuminate/support:${{ matrix.laravel }}" --no-interaction --no-update && composer update --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Setup Database
+        run: |
+          touch database/database.sqlite
+          echo "DB_CONNECTION=sqlite" >> .env
+          echo "DB_DATABASE=$(pwd)/database/database.sqlite" >> .env
+          php artisan migrate --force
+
+      - name: Run Tests
+        run: ./vendor/bin/phpunit --display-deprecations --display-warnings --verbose
+        env:
+          QUEUE_CONNECTION: database
