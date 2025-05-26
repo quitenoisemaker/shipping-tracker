@@ -1,0 +1,61 @@
+{
+    "name": "quitenoisemaker/shipping-tracker",
+    "description": "An extendable Laravel package for tracking shipments from Nigerian and European carriers.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "shipping", "tracking", "webhooks", "sendbox", "cargoplug"],
+    "authors": [
+        {
+            "name": "Quitenoisemaker",
+            "email": "samsonojugo@gmail.com"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/quitenoisemaker/shipping-tracker/issues",
+        "source": "https://github.com/quitenoisemaker/shipping-tracker"
+    },
+    "require": {
+        "php": "^8.1|^8.2|^8.3",
+        "illuminate/support": "^10.0|^11.0",
+        "illuminate/http": "^10.0|^11.0",
+        "illuminate/database": "^10.0|^11.0",
+        "illuminate/cache": "^10.0|^11.0",
+        "illuminate/events": "^10.0|^11.0",
+        "illuminate/log": "^10.0|^11.0",
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0",
+        "guzzlehttp/psr7": "^2.0",
+        "mockery/mockery": "^1.6",
+        "friendsofphp/php-cs-fixer": "^3.75"
+    },
+    "autoload": {
+        "psr-4": {
+            "Quitenoisemaker\\ShippingTracker\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Quitenoisemaker\\ShippingTracker\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Quitenoisemaker\\ShippingTracker\\ShippingTrackerServiceProvider"
+            ],
+            "aliases": {
+                "ShippingTracker": "Quitenoisemaker\\ShippingTracker\\Facades\\ShippingTracker"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/php-cs-fixer fix --allow-risky=yes"
+    }
+}
