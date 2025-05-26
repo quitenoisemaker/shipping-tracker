@@ -75,7 +75,7 @@ We use GitHub for collaboration. Here’s how you can help:
 - Fix bugs or add tests for edge cases.
 
 ## Community
-Join the discussion on [GitHub Issues](https://github.com/quitenoisemaker/shipping-tracker/issues) or reach out via [your-email@example.com]. Your ideas and feedback make this project better!
+Join the discussion on [GitHub Issues](https://github.com/quitenoisemaker/shipping-tracker/issues) or reach out via [samsonojugo@gmail.com](samsonojugo@gmail.com). Your ideas and feedback make this project better!
 
 ## Code of Conduct
 Be respectful and inclusive. We follow the [Contributor Covenant](https://www.contributor-covenant.org/).
