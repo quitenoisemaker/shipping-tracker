@@ -1,5 +1,7 @@
 # ShippingTracker
 
+[![CI Pipeline](https://github.com/quitenoisemaker/shipping-tracker/actions/workflows/test.yml/badge.svg)](https://github.com/quitenoisemaker/shipping-tracker/actions/workflows/test.yml)
+
 A Laravel package to simplify shipment tracking and webhook handling for Africa and Europe logistics. Supports providers like Cargoplug and Sendbox, with an open-source spirit welcoming contributions.
 
 ## Features
