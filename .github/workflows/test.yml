@@ -41,6 +41,6 @@ jobs:
           composer update --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Run Tests
-        run: ./vendor/bin/phpunit --display-deprecations --display-warnings --verbose
+        run: ./vendor/bin/phpunit --display-deprecations --display-warnings
         env:
           QUEUE_CONNECTION: database
