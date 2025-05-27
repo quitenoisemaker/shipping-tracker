@@ -31,15 +31,9 @@ jobs:
           coverage: none
 
       - name: Install Dependencies
-        run: composer require "illuminate/support:${{ matrix.laravel }}" --no-interaction --no-update && composer update --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Setup Database
         run: |
-          mkdir -p database
-          touch database/database.sqlite
-          echo "DB_CONNECTION=sqlite" >> .env
-          echo "DB_DATABASE=$(pwd)/database/database.sqlite" >> .env
-          php artisan migrate --force
+          composer require "illuminate/support:${{ matrix.laravel }}" "orchestra/testbench:^8.0" --no-interaction --no-update
+          composer update --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Run Tests
         run: ./vendor/bin/phpunit --display-deprecations --display-warnings --verbose
