@@ -43,7 +43,11 @@ class WebhookControllerTest extends TestCase
      */
     public function it_handles_webhook_and_stores_it(string $provider)
     {
-        $payload = ['tracking_number' => '101782511', 'status' => 'delivered'];
+        if ($provider === 'cargoplug') {
+            $payload = ['tracking_number' => '101782511', 'status' => 'delivered'];
+        } elseif ($provider === 'sendbox') {
+            $payload = ['events' => [], 'status' => 'delivered'];
+        }
 
         $response = $this->postJson("/api/shipping/webhooks/{$provider}", $payload);
         $response->assertStatus(200)->assertJson(['message' => 'Webhook received']);

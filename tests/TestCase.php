@@ -47,6 +47,9 @@ abstract class TestCase extends Orchestra
             'queue' => 'default',
             'retry_after' => 90,
         ]);
+
+        $app['config']->set('shipping-tracker.cargoplug.required_webhook_fields', ['tracking_number', 'status']);
+        $app['config']->set('shipping-tracker.sendbox.required_webhook_fields', ['events', 'status']);
     }
 
     /**
