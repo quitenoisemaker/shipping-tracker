@@ -128,7 +128,7 @@ class ShippingTrackerTest extends TestCase
         $results['SB456'] = $tracker->use('sendbox')->track('SB456');
 
         $this->assertSame('in_transit', $results['CP123']['status']);
-        $this->assertSame('delivered', $results['SB456']['status']);
+        $this->assertSame('delivered', $results['SB456']['raw']['status']['code']);
     }
 
     // ShippingTrackerTest.php
@@ -167,7 +167,7 @@ class ShippingTrackerTest extends TestCase
         $tracker = app(ShippingTracker::class);
         $result = $tracker->track('SB123');
 
-        $this->assertSame('delivered', $result['status']);
+        $this->assertSame('delivered', $result['raw']['status']['code']);
         $this->assertInstanceOf(SendboxShippingProvider::class, $tracker->getProvider());
     }
 }

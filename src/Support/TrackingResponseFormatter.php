@@ -13,9 +13,9 @@ class TrackingResponseFormatter
         }
         
         return [
-            'status' => Arr::get($data, 'status.code', 'unknown'),
+            'status' => Arr::get($data, 'status_code', 'unknown'),
             'current_location' => Arr::get($data, 'events.0.location_description', 'Unknown'),
-            'estimated_delivery' => $data['delivery_eta'] ?? null,
+            'estimated_delivery' => $data['events.delivery_eta'] ?? null,
             'events' => collect($data['events'] ?? [])->map(function ($event) {
                 return [
                     'timestamp' => $event['date_created'] ?? null,
