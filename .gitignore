@@ -1,6 +1,5 @@
 vendor/
 .env
 composer.lock
-phpunit.xml
 .phpunit.cache/
 coverage/
