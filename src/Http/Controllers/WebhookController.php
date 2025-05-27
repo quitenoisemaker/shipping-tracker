@@ -66,9 +66,13 @@ class WebhookController extends Controller
             throw new ShippingException("Invalid provider: {$provider}");
         }
 
+        $requiredFields = config("shipping-tracker.{$provider}.required_webhook_fields", []);
         $payload = $request->all();
-        if (empty($payload['tracking_number']) || empty($payload['status'])) {
-            throw new ShippingException('Webhook payload missing required fields: tracking_number, status');
+
+        foreach ($requiredFields as $field) {
+            if (data_get($payload, $field) === null || data_get($payload, $field) === '') {
+                throw new ShippingException("Webhook payload missing required field: {$field}");
+            }
         }
 
         // Example for future providers with signatures
