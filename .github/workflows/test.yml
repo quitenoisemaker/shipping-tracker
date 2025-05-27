@@ -14,11 +14,16 @@ jobs:
       matrix:
         php: [ '8.1', '8.2', '8.3' ]
         laravel: [ '10.*', '11.*' ]
+        testbench: [ '8.*', '9.*' ]
         exclude:
           - php: '8.1'
             laravel: '11.*'
+          - laravel: '10.*'
+            testbench: '9.*'
+          - laravel: '11.*'
+            testbench: '8.*'
 
-    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} - Testbench ${{ matrix.testbench }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +37,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          composer require "illuminate/support:${{ matrix.laravel }}" "orchestra/testbench:^8.0" --no-interaction --no-update
+          composer require "illuminate/support:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
           composer update --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Run Tests
