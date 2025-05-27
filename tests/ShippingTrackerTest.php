@@ -90,7 +90,6 @@ class ShippingTrackerTest extends TestCase
             ]);
         }
 
-        // Allow Log::debug() calls
         Log::shouldReceive('debug')->never();
 
         $this->expectException(ShippingException::class);

@@ -5,7 +5,6 @@ namespace Quitenoisemaker\ShippingTracker\Listeners;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Quitenoisemaker\ShippingTracker\Models\Shipment;
-use Quitenoisemaker\ShippingTracker\Support\StatusMapper;
 use Quitenoisemaker\ShippingTracker\Models\ShippingWebhook;
 use Quitenoisemaker\ShippingTracker\Events\ShippingWebhookReceived;
 

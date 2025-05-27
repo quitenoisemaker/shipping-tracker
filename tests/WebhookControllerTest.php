@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Event;
 use Quitenoisemaker\ShippingTracker\Tests\TestCase;
 use Quitenoisemaker\ShippingTracker\Events\ShippingWebhookReceived;
-use Quitenoisemaker\ShippingTracker\Models\ShippingWebhook;
 
 class WebhookControllerTest extends TestCase
 {
@@ -59,7 +58,7 @@ class WebhookControllerTest extends TestCase
         });
     }
 
-    public function webhookProvider(): array
+    public static function webhookProvider(): array
     {
         return [
             'Cargoplug' => ['cargoplug'],

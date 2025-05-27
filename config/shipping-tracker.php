@@ -34,12 +34,20 @@ return [
         'app_id' => env('SENDBOX_APP_ID'),
         'client_key' => env('SENDBOX_APP_CLIENT_KEY'),
         'access_token' => env('SENDBOX_ACCESS_TOKEN'),
+        'required_webhook_fields' => [
+            'events',
+            'status',
+        ],
     ],
 
     'cargoplug' => [    
         'base_url' => env('CARGOPLUG_API_URL', 'https://api.getcargoplug.com/api/v1'),
         'secret_key' => env('CARGOPLUG_SECRET_KEY'),
         'client_key' => env('CARGOPLUG_CLIENT_KEY'),
+        'required_webhook_fields' => [
+            'tracking_number',
+            'status',
+        ],
     ],
 
 ];
