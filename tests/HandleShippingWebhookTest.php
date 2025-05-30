@@ -12,12 +12,15 @@ use Mockery;
 
 class HandleShippingWebhookTest extends TestCase
 {
+    protected function getPackageProviders($app)
+    {
+        return ['Quitenoisemaker\ShippingTracker\ShippingTrackerServiceProvider'];
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
-
         $this->loadMigrationsFrom(__DIR__ . '/../src/database/migrations');
-
         config([
             'shipping-tracker.cargoplug.base_url' => 'https://test.getcargoplug.com',
             'shipping-tracker.cargoplug.secret_key' => 'secret',
@@ -34,48 +37,64 @@ class HandleShippingWebhookTest extends TestCase
 
     protected function tearDown(): void
     {
-        \Mockery::close();
+        Mockery::close();
         parent::tearDown();
     }
 
-    // HandleShippingWebhookTest.php
     /** @test */
     public function it_handles_webhook_for_valid_payload()
     {
-        $providers = ['sendbox', 'cargoplug'];
-        foreach ($providers as $provider) {
-            $payload = ['tracking_number' => '101782511', 'status' => 'delivered'];
+        $providers = [
+            'sendbox' => [
+                'payload' => [
+                    'code' => '101782511',
+                    'status' => ['code' => 'delivered'],
+                    'events' => ['location_description' => 'Lagos Hub', 'timestamp' => '2025-05-30T12:00:00Z'],
+                    'delivery_eta' => '2025-06-01',
+                ],
+                'expected' => [
+                    'tracking_number' => '101782511',
+                    'status' => 'delivered',
+                    'location' => 'Lagos Hub',
+                    'estimated_delivery' => '2025-06-01',
+                    'history' => json_encode(['location_description' => 'Lagos Hub', 'timestamp' => '2025-05-30T12:00:00Z']),
+                ],
+            ],
+            'cargoplug' => [
+                'payload' => ['tracking_number' => '101782511', 'status' => 'delivered'],
+                'expected' => [
+                    'tracking_number' => '101782511',
+                    'status' => 'delivered',
+                    'location' => null,
+                    'estimated_delivery' => null,
+                    'history' => json_encode([]),
+                ],
+            ],
+        ];
 
+        foreach ($providers as $provider => $data) {
             Log::shouldReceive('info')
                 ->once()
                 ->withAnyArgs();
-            Log::shouldReceive('error') // Allow error logs
+            Log::shouldReceive('error')
+                ->never()
+                ->withAnyArgs();
+            Log::shouldReceive('warning')
                 ->never()
                 ->withAnyArgs();
 
             $webhook = ShippingWebhook::create([
                 'provider' => $provider,
-                'payload' => $payload,
+                'payload' => $data['payload'],
             ]);
 
             $listener = new HandleShippingWebhook();
             $listener->handle(new ShippingWebhookReceived($webhook));
 
-            $this->assertDatabaseHas('shipments', [
-                'tracking_number' => '101782511',
+            $this->assertDatabaseHas('shipments', array_merge([
                 'provider' => $provider,
-                'status' => 'delivered',
-            ]);
+            ], $data['expected']));
         }
-    }
-
-
-    public function webhookProvider(): array
-    {
-        return [
-            'Cargoplug' => ['cargoplug'],
-            'Sendbox' => ['sendbox'],
-        ];
     }
 
     /** @test */
