@@ -62,13 +62,15 @@ class WebhookController extends Controller
     protected function validateWebhook(Request $request, string $provider): void
     {
         $providers = array_keys(config('shipping-tracker.providers', []));
+    
         if (!in_array($provider, $providers, true)) {
+           
             throw new ShippingException("Invalid provider: {$provider}");
         }
 
         $requiredFields = config("shipping-tracker.{$provider}.required_webhook_fields", []);
         $payload = $request->all();
-
+ 
         foreach ($requiredFields as $field) {
             if (data_get($payload, $field) === null || data_get($payload, $field) === '') {
                 throw new ShippingException("Webhook payload missing required field: {$field}");

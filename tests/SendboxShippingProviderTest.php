@@ -109,10 +109,22 @@ class SendboxShippingProviderTest extends TestCase
 
         Log::shouldReceive('info')
             ->once()
-            ->with('Sendbox webhook processed', ['payload' => ['tracking_number' => '101782511', 'status' => 'delivered']]);
+            ->with('Sendbox webhook processed', [
+                'payload' => [
+                    'code' => '101782511',
+                    'status' => ['code' => 'delivered'],
+                    'events' => ['location_description' => 'Lagos Hub'],
+                    'delivery_eta' => '2025-06-01',
+                ],
+            ]);
 
         $provider = new SendboxShippingProvider();
-        $provider->handleWebhook(['tracking_number' => '101782511', 'status' => 'delivered']);
+        $provider->handleWebhook([
+            'code' => '101782511',
+            'status' => ['code' => 'delivered'],
+            'events' => ['location_description' => 'Lagos Hub'],
+            'delivery_eta' => '2025-06-01',
+        ]);
     }
 
     /** @test */

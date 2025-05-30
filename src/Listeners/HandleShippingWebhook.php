@@ -43,8 +43,8 @@ class HandleShippingWebhook implements ShouldQueue
     protected function handleSendbox(ShippingWebhook $webhook): void
     {
         $payload = $webhook->payload;
-        $trackingNumber = $payload['tracking_number'] ?? null;
-        $status = $payload['status'] ?? null;
+        $trackingNumber = $payload['code'] ?? null;
+        $status = $payload['status']['code'] ?? null;
 
         if ($trackingNumber && $status) {
             try {
@@ -52,7 +52,7 @@ class HandleShippingWebhook implements ShouldQueue
                     ['tracking_number' => $trackingNumber, 'provider' => 'sendbox'],
                     [
                         'status' => $status,
-                        'location' => $payload['location'] ?? null,
+                        'location' => $payload['events']['location_description'] ?? null,
                         'estimated_delivery' => $payload['delivery_eta'] ?? null,
                         'history' => $payload['events'] ?? [],
                     ]
@@ -77,7 +77,6 @@ class HandleShippingWebhook implements ShouldQueue
      */
     protected function handleCargoplug(ShippingWebhook $webhook): void
     {
-
         $payload = $webhook->payload;
 
         $trackingNumber = $payload['tracking_number'] ?? null;
