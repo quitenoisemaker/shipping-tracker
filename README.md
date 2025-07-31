@@ -148,6 +148,12 @@ Route::prefix('api/shipping')->group(function () {
 
 Register the webhook URL (e.g., `https://your-app.com/api/shipping/webhooks/sendbox`) with your provider.
 
+## Status Normalization
+ShippingTracker normalizes provider statuses using `StatusMapper` in both webhooks and API tracking (`track` method). It handles case and space variations (e.g., Cargoplug's "In Transit" → `in_transit`, "PAID" → `paid`). Examples:
+- Sendbox: `delivery_started` → `in_transit`, `delivered` → `delivered`
+- Cargoplug: `received_abroad` → `in_transit`, `In Transit` → `in_transit`, `delivered` → `delivered`
+Customize mappings in `config/shipping-tracker.php` under `status_map`.
+
 ## Extending the Package
 Create a custom provider:
 1. Create a class implementing `Quitenoisemaker\ShippingTracker\Contracts\ShippingProvider`:

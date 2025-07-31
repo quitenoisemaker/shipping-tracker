@@ -31,8 +31,16 @@ class StatusMapper
         ],
     ];
 
+    /**
+     * Normalize a status based on the provider.
+     *
+     * @param string $provider
+     * @param string $status
+     * @return string
+     */
     public static function normalize(string $provider, string $status): string
     {
-        return static::$map[strtolower($provider)][$status] ?? 'unknown';
+        $normalizedStatus = str_replace(' ', '_', strtolower($status));
+        return static::$map[strtolower($provider)][$normalizedStatus] ?? 'unknown';
     }
 }

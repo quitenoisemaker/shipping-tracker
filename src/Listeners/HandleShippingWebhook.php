@@ -5,18 +5,15 @@ namespace Quitenoisemaker\ShippingTracker\Listeners;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Quitenoisemaker\ShippingTracker\Models\Shipment;
+use Quitenoisemaker\ShippingTracker\Support\StatusMapper;
 use Quitenoisemaker\ShippingTracker\Models\ShippingWebhook;
 use Quitenoisemaker\ShippingTracker\Events\ShippingWebhookReceived;
 
 class HandleShippingWebhook implements ShouldQueue
 {
-
     public $tries = 3;
     public $backoff = [60, 300, 600];
 
-    /**
-     * Handle the event.
-     */
     public function handle(ShippingWebhookReceived $event): void
     {
         $webhook = $event->webhook;
@@ -37,24 +34,29 @@ class HandleShippingWebhook implements ShouldQueue
         }
     }
 
-    /**
-     * Handle Sendbox webhook.
-     */
     protected function handleSendbox(ShippingWebhook $webhook): void
     {
         $payload = $webhook->payload;
         $trackingNumber = $payload['code'] ?? null;
-        $status = $payload['status']['code'] ?? null;
+        $rawStatus = $payload['status']['code'] ?? null;
 
-        if ($trackingNumber && $status) {
+        if ($trackingNumber && $rawStatus) {
             try {
+                $status = StatusMapper::normalize('sendbox', $rawStatus);
                 Shipment::updateOrCreate(
                     ['tracking_number' => $trackingNumber, 'provider' => 'sendbox'],
                     [
                         'status' => $status,
                         'location' => $payload['events']['location_description'] ?? null,
                         'estimated_delivery' => $payload['delivery_eta'] ?? null,
-                        'history' => $payload['events'] ?? [],
+                        'history' => collect($payload['events'] ?? [])->map(function ($event) {
+                            $eventStatus = $event['status']['code'] ?? null;
+                            return [
+                                'timestamp' => $event['timestamp'] ?? null,
+                                'location_description' => $event['location_description'] ?? null,
+                                'status' => $eventStatus ? StatusMapper::normalize('sendbox', $eventStatus) : null,
+                            ];
+                        })->toArray(),
                     ]
                 );
                 Log::info('Sendbox shipment updated', [
@@ -72,27 +74,28 @@ class HandleShippingWebhook implements ShouldQueue
         }
     }
 
-    /**
-     * Handle Cargoplug webhook.
-     */
     protected function handleCargoplug(ShippingWebhook $webhook): void
     {
         $payload = $webhook->payload;
-
         $trackingNumber = $payload['tracking_number'] ?? null;
         $rawStatus = $payload['status'] ?? null;
 
         if ($trackingNumber && $rawStatus) {
-
             try {
-                $status = $rawStatus;
+                $status = StatusMapper::normalize('cargoplug', $rawStatus);
                 Shipment::updateOrCreate(
                     ['tracking_number' => $trackingNumber, 'provider' => 'cargoplug'],
                     [
                         'status' => $status,
                         'location' => $payload['location'] ?? null,
                         'estimated_delivery' => $payload['expected_delivery_date'] ?? null,
-                        'history' => $payload['history'] ?? [],
+                        'history' => collect($payload['history'] ?? [])->map(function ($event) {
+                            $eventStatus = $event['status'] ?? null;
+                            return [
+                                'timestamp' => $event['order_updated'] ?? null,
+                                'status' => $eventStatus ? StatusMapper::normalize('cargoplug', $eventStatus) : null,
+                            ];
+                        })->toArray(),
                     ]
                 );
                 Log::info('Cargoplug shipment updated', [
