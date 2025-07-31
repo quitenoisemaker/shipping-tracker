@@ -33,7 +33,7 @@ class ShippingTrackerServiceProvider extends ServiceProvider
             __DIR__ . '/../config/shipping-tracker.php' => config_path('shipping-tracker.php'),
         ], 'shipping-tracker-config');
 
-        // Load package migrations
+        // Load package
         $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
 
         $this->loadRoutesFrom(__DIR__ . '/routes/api.php');
