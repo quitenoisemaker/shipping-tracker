@@ -2,12 +2,14 @@
 
 namespace Quitenoisemaker\ShippingTracker\Tests;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Quitenoisemaker\ShippingTracker\Tests\TestCase;
 use Quitenoisemaker\ShippingTracker\Events\ShippingWebhookReceived;
 use Quitenoisemaker\ShippingTracker\Listeners\HandleShippingWebhook;
 use Quitenoisemaker\ShippingTracker\Models\ShippingWebhook;
+use Quitenoisemaker\ShippingTracker\Providers\CargoplugShippingProvider;
 use Mockery;
 
 class HandleShippingWebhookTest extends TestCase
@@ -29,10 +31,12 @@ class HandleShippingWebhookTest extends TestCase
             'shipping-tracker.sendbox.app_id' => 'test-app-id',
             'shipping-tracker.sendbox.client_key' => 'test-client-key',
         ]);
+        Cache::flush(); // Clear cache to prevent interference
         Http::fake([
             'https://test.getcargoplug.com/user/authenticate' => Http::response(['data' => ['access_token' => 'test-token']], 200),
             'https://test.sendbox.co/oauth/access/test-app-id/refresh?app_id=test-app-id&client_secret=test-client-key' => Http::response(['access_token' => 'new-token'], 200),
         ]);
+        Http::preventStrayRequests(); // Prevent unmocked requests
     }
 
     protected function tearDown(): void
@@ -48,26 +52,40 @@ class HandleShippingWebhookTest extends TestCase
             'sendbox' => [
                 'payload' => [
                     'code' => '101782511',
-                    'status' => ['code' => 'delivered'],
-                    'events' => ['location_description' => 'Lagos Hub', 'timestamp' => '2025-05-30T12:00:00Z'],
+                    'status' => ['code' => 'delivery_started'],
+                    'events' => [
+                        ['location_description' => 'Lagos Hub', 'timestamp' => '2025-05-30T12:00:00Z', 'status' => ['code' => 'delivery_started']],
+                    ],
                     'delivery_eta' => '2025-06-01',
+                ],
+                'expected' => [
+                    'tracking_number' => '101782511',
+                    'status' => 'in_transit',
+                    'location' => 'Lagos Hub',
+                    'estimated_delivery' => '2025-06-01',
+                    'history' => json_encode([
+                        ['timestamp' => '2025-05-30T12:00:00Z', 'location_description' => 'Lagos Hub', 'status' => 'in_transit'],
+                    ]),
+                ],
+            ],
+            'cargoplug' => [
+                'payload' => [
+                    'tracking_number' => '101782511',
+                    'status' => 'delivered',
+                    'location' => 'Lagos Hub',
+                    'expected_delivery_date' => '2025-06-01',
+                    'history' => [
+                        ['order_updated' => '2025-05-30T12:00:00Z', 'status' => 'initiated'],
+                    ],
                 ],
                 'expected' => [
                     'tracking_number' => '101782511',
                     'status' => 'delivered',
                     'location' => 'Lagos Hub',
                     'estimated_delivery' => '2025-06-01',
-                    'history' => json_encode(['location_description' => 'Lagos Hub', 'timestamp' => '2025-05-30T12:00:00Z']),
-                ],
-            ],
-            'cargoplug' => [
-                'payload' => ['tracking_number' => '101782511', 'status' => 'delivered'],
-                'expected' => [
-                    'tracking_number' => '101782511',
-                    'status' => 'delivered',
-                    'location' => null,
-                    'estimated_delivery' => null,
-                    'history' => json_encode([]),
+                    'history' => json_encode([
+                        ['timestamp' => '2025-05-30T12:00:00Z', 'status' => 'pending'],
+                    ]),
                 ],
             ],
         ];
@@ -98,6 +116,49 @@ class HandleShippingWebhookTest extends TestCase
     }
 
     /** @test */
+    public function it_handles_cargoplug_webhook_with_uppercase_and_spaced_status()
+    {
+        $payload = [
+            'tracking_number' => '101782511',
+            'status' => 'In Transit',
+            'location' => 'Lagos Hub',
+            'expected_delivery_date' => '2025-06-01',
+            'history' => [
+                ['order_updated' => '2025-05-30T12:00:00Z', 'status' => 'PAID'],
+            ],
+        ];
+
+        Log::shouldReceive('info')
+            ->once()
+            ->withAnyArgs();
+        Log::shouldReceive('error')
+            ->never()
+            ->withAnyArgs();
+        Log::shouldReceive('warning')
+            ->never()
+            ->withAnyArgs();
+
+        $webhook = ShippingWebhook::create([
+            'provider' => 'cargoplug',
+            'payload' => $payload,
+        ]);
+
+        $listener = new HandleShippingWebhook();
+        $listener->handle(new ShippingWebhookReceived($webhook));
+
+        $this->assertDatabaseHas('shipments', [
+            'provider' => 'cargoplug',
+            'tracking_number' => '101782511',
+            'status' => 'in_transit',
+            'location' => 'Lagos Hub',
+            'estimated_delivery' => '2025-06-01',
+            'history' => json_encode([
+                ['timestamp' => '2025-05-30T12:00:00Z', 'status' => 'paid'],
+            ]),
+        ]);
+    }
+
+    /** @test */
     public function it_logs_warning_for_invalid_provider()
     {
         Log::shouldReceive('warning')
@@ -113,5 +174,35 @@ class HandleShippingWebhookTest extends TestCase
         $listener->handle(new ShippingWebhookReceived($webhook));
 
         $this->assertTrue(true);
+    }
+
+    /** @test */
+    public function it_handles_cargoplug_track_with_uppercase_and_spaced_status()
+    {
+        $mockResponse = [
+            'data' => [
+                [
+                    'result' => [
+                        'tracking_number' => '101782511',
+                        'status' => 'In Transit',
+                        'expected_delivery_date' => '2025-06-01',
+                        'history' => [
+                            ['order_updated' => '2025-05-30T12:00:00Z', 'status' => 'PAID'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        // Mock the correct tracking endpoint
+        Http::fake([
+            'https://test.getcargoplug.com/shipment/tracking/external*' => Http::response($mockResponse, 200),
+        ]);
+
+        $provider = new CargoplugShippingProvider();
+        $result = $provider->track('101782511');
+
+        $this->assertEquals('in_transit', $result['status']);
+        $this->assertEquals('paid', $result['events'][0]['status']);
     }
 }

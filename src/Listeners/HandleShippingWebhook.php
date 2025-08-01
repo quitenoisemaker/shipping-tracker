@@ -47,7 +47,7 @@ class HandleShippingWebhook implements ShouldQueue
                     ['tracking_number' => $trackingNumber, 'provider' => 'sendbox'],
                     [
                         'status' => $status,
-                        'location' => $payload['events']['location_description'] ?? null,
+                        'location' => $payload['events'][0]['location_description'] ?? null,
                         'estimated_delivery' => $payload['delivery_eta'] ?? null,
                         'history' => collect($payload['events'] ?? [])->map(function ($event) {
                             $eventStatus = $event['status']['code'] ?? null;
