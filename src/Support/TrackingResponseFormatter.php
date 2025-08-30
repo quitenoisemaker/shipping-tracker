@@ -59,8 +59,6 @@ class TrackingResponseFormatter
             'status' => $status,
             'description' => Arr::get($data, 'description', null),
             'tracking_number' => Arr::get($data, 'tracking_number', null),
-            'weight' => Arr::get($data, 'weight', null),
-            'quantity' => Arr::get($data, 'quantity', null),
             'estimated_delivery' => $data['expected_delivery_date'] ?? null,
             'events' => collect($data['history'] ?? [])->map(function ($event) {
                 $eventStatus = $event['status'] ?? null;
@@ -70,6 +68,54 @@ class TrackingResponseFormatter
                 ];
             })->toArray(),
             'raw' => $data,
+        ];
+    }
+
+    /**
+     * Format a DHL tracking response into a standardized format.
+     *
+     * @param array $data
+     * @return array
+     * @throws \InvalidArgumentException
+     */
+    public static function formatDHL(array $data): array
+    {
+        if (empty($data)) {
+            throw new \InvalidArgumentException('DHL response data is empty');
+        }
+
+        // Extract raw status safely
+        $rawStatus = $data['status']['statusCode']
+            ?? $data['status']['status']
+            ?? $data['status']['description']
+            ?? 'unknown';
+
+        // Normalize status
+        $status = StatusMapper::normalize('dhl', $rawStatus);
+
+        // Build history of events
+        $history = array_map(function ($event) {
+            $raw = $event['statusCode']
+                ?? $event['status']
+                ?? $event['description']
+                ?? 'unknown';
+
+            return [
+                'timestamp' => $event['timestamp'] ?? '',
+                'status' => StatusMapper::normalize('dhl', $raw),
+                'location_description' => $event['location']['address']['addressLocality']
+                    ?? $event['location']['address']['countryCode']
+                    ?? '',
+            ];
+        }, $data['events'] ?? []);
+
+        // Latest event determines current location
+        $latestEvent = $history[0] ?? null;
+        return [
+            'tracking_number' => $data['id'] ?? null,
+            'status' => $status,
+            'location' => $latestEvent['location_description'] ?? 'Unknown',
+            'events' => $history,
         ];
     }
 }

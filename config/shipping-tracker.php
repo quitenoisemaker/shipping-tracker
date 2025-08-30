@@ -24,8 +24,7 @@ return [
     'providers' => [
         'sendbox' => \Quitenoisemaker\ShippingTracker\Providers\SendboxShippingProvider::class,
         'cargoplug' => \Quitenoisemaker\ShippingTracker\Providers\CargoplugShippingProvider::class,
-        // Later: Add real providers here
-        // 'dhl' => \Quitenoisemaker\ShippingTracker\Providers\DhlShippingProvider::class,
+        'dhl' => \Quitenoisemaker\ShippingTracker\Providers\DhlShippingProvider::class,
         // 'gigl' => \Quitenoisemaker\ShippingTracker\Providers\GiglShippingProvider::class,
     ],
 
@@ -40,12 +39,22 @@ return [
         ],
     ],
 
-    'cargoplug' => [    
+    'cargoplug' => [
         'base_url' => env('CARGOPLUG_API_URL', 'https://api.getcargoplug.com/api/v1'),
         'secret_key' => env('CARGOPLUG_SECRET_KEY'),
         'client_key' => env('CARGOPLUG_CLIENT_KEY'),
         'required_webhook_fields' => [
             'tracking_number',
+            'status',
+        ],
+    ],
+
+    'dhl' => [
+        'base_url' => env('DHL_BASE_URL', 'https://api-eu.dhl.com'),
+        'api_key' => env('DHL_API_KEY'),
+        'api_secret' => env('DHL_API_SECRET'),
+        'required_webhook_fields' => [
+            'events',
             'status',
         ],
     ],
