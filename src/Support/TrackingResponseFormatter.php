@@ -56,9 +56,9 @@ class TrackingResponseFormatter
         $status = StatusMapper::normalize('cargoplug', $rawStatus);
 
         return [
-            'status' => $status,
-            'description' => Arr::get($data, 'description', null),
             'tracking_number' => Arr::get($data, 'tracking_number', null),
+            'status' => $status,
+            'description' => Arr::get($data, 'description', null), 
             'estimated_delivery' => $data['expected_delivery_date'] ?? null,
             'events' => collect($data['history'] ?? [])->map(function ($event) {
                 $eventStatus = $event['status'] ?? null;
@@ -111,9 +111,9 @@ class TrackingResponseFormatter
 
         // Latest event determines current location
         $latestEvent = $history[0] ?? null;
-        return [
-            'tracking_number' => $data['id'] ?? null,
+        return [ 
             'status' => $status,
+            'tracking_number' => $data['id'] ?? null,
             'location' => $latestEvent['location_description'] ?? 'Unknown',
             'events' => $history,
         ];

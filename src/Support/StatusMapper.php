@@ -168,6 +168,8 @@ class StatusMapper
             "Shipment picked up" => "pending",
             "Shipment departed" => "in_transit",
             "Shipment processed" => "in_transit",
+            "in customs" => "on_hold",
+            "out for delivery" => "in_transit",
 
         ],
 

@@ -48,11 +48,13 @@ class DhlShippingProvider implements ShippingProviderInterface
 
     public function handleWebhook(array $payload): void
     {
-        // Placeholder implementation for handling DHL webhook callbacks.
-        // In a real implementation, you would process the payload sent by DHL.
-
-        // Example: Log the payload for debugging purposes
-        // Log::info('DHL Webhook Payload:', $payload);
+        // Validate or process payload  
+        $payload = $payload['shipments'][0];
+        if (empty($payload['id']) || empty($payload['status']['statusCode'])) {
+            Log::warning('Invalid DHL webhook payload', ['payload' => $payload]);
+            return;
+        }
+        Log::info('DHL webhook received', ['payload' => $payload]);
     }
 
     /**

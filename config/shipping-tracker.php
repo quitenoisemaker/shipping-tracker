@@ -54,8 +54,8 @@ return [
         'api_key' => env('DHL_API_KEY'),
         'api_secret' => env('DHL_API_SECRET'),
         'required_webhook_fields' => [
-            'events',
-            'status',
+            'scope',
+            'self',
         ],
     ],
 

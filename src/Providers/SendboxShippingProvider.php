@@ -91,7 +91,7 @@ class SendboxShippingProvider implements ShippingProviderInterface
     public function handleWebhook(array $payload): void
     {
         // Validate or process payload
-        if (empty($payload['code']) || empty($payload['status']['code'])) {
+        if (empty($payload['id']) || empty($payload['status']['code'])) {
             Log::warning('Invalid Sendbox webhook payload', ['payload' => $payload]);
             return;
         }

@@ -48,7 +48,6 @@ class WebhookController extends Controller
                 // If the rate limit is reached, return a 429 status code
                 return response()->json(['message' => 'Too many requests'], 429);
             }
-
         } catch (\Exception $e) {
             // If the webhook processing fails, log the error and return a 400 status code
             Log::error("Webhook processing failed for {$provider}: {$e->getMessage()}");
@@ -62,28 +61,29 @@ class WebhookController extends Controller
     protected function validateWebhook(Request $request, string $provider): void
     {
         $providers = array_keys(config('shipping-tracker.providers', []));
-    
+
         if (!in_array($provider, $providers, true)) {
-           
+
             throw new ShippingException("Invalid provider: {$provider}");
         }
 
         $requiredFields = config("shipping-tracker.{$provider}.required_webhook_fields", []);
         $payload = $request->all();
- 
+
         foreach ($requiredFields as $field) {
             if (data_get($payload, $field) === null || data_get($payload, $field) === '') {
                 throw new ShippingException("Webhook payload missing required field: {$field}");
             }
         }
 
-        // Example for future providers with signatures
-        // if ($provider === 'dhl') {
-        //     $signature = $request->header('X-Dhl-Signature');
-        //     $expected = hash_hmac('sha256', $request->getContent(), config('shipping-tracker.dhl.api_key'));
-        //     if (!hash_equals($expected, $signature)) {
-        //         throw new ShippingException('Invalid DHL webhook signature');
-        //     }
-        // }
+        // DHL-specific validation: ensure `self` URL starts with DHL base domain
+        if ($provider === 'dhl') {
+            $selfUrl = data_get($payload, 'self');
+            $expectedBase = config('shipping-tracker.dhl.base_url');
+
+            if (!$selfUrl || !str_starts_with($selfUrl, $expectedBase)) {
+                throw new ShippingException("Invalid DHL webhook: unexpected self URL");
+            }
+        }
     }
 }

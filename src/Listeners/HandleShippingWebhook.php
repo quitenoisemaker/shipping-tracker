@@ -112,4 +112,45 @@ class HandleShippingWebhook implements ShouldQueue
             Log::warning('Invalid Cargoplug webhook payload', ['payload' => $payload]);
         }
     }
+
+    protected function handleDHL(ShippingWebhook $webhook): void
+    {
+        $payload = $webhook->payload;
+        $shipmentData = $payload['shipments'][0] ?? null;
+        $trackingNumber = $shipmentData['id'] ?? null;
+        $rawStatus = $shipmentData['status']['statusCode'] ?? null;
+
+        if ($trackingNumber && $rawStatus) {
+            try {
+                $status = StatusMapper::normalize('dhl', $rawStatus);
+                Shipment::updateOrCreate(
+                    ['tracking_number' => $trackingNumber, 'provider' => 'dhl'],
+                    [
+                        'status' => $status,
+                        'location' => $shipmentData['status']['location']['address']['addressLocality'] ?? null,
+                        'estimated_delivery' => $shipmentData['estimatedDeliveryDate'] ?? null,
+                        'history' => collect($shipmentData['status'] ?? [])->map(function ($event) {
+                            $eventStatus = $event['status'] ?? null;
+                            return [
+                                'timestamp' => $event['timestamp'] ?? null,
+                                'status' => $eventStatus ? StatusMapper::normalize('dhl', $eventStatus) : null,
+                                'location_description' => $event['location']['address']['addressLocality'] ?? null,
+                            ];
+                        })->toArray(),
+                    ]
+                );
+                Log::info('DHL shipment updated', [
+                    'tracking_number' => $trackingNumber,
+                    'status' => $status,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to update DHL shipment', [
+                    'tracking_number' => $trackingNumber,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            Log::warning('Invalid DHL webhook payload', ['payload' => $payload]);
+        }
+    }
 }
