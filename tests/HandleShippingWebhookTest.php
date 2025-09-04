@@ -30,6 +30,8 @@ class HandleShippingWebhookTest extends TestCase
             'shipping-tracker.sendbox.base_url' => 'https://test.sendbox.co',
             'shipping-tracker.sendbox.app_id' => 'test-app-id',
             'shipping-tracker.sendbox.client_key' => 'test-client-key',
+            'shipping-tracker.dhl.base_url' => 'https://test.dhl.com',
+            'shipping-tracker.dhl.api_key' => 'test-api-key',
         ]);
         Cache::flush(); // Clear cache to prevent interference
         Http::fake([
@@ -85,6 +87,42 @@ class HandleShippingWebhookTest extends TestCase
                     'estimated_delivery' => '2025-06-01',
                     'history' => json_encode([
                         ['timestamp' => '2025-05-30T12:00:00Z', 'status' => 'pending'],
+                    ]),
+                ],
+            ],
+            'dhl' => [
+                'payload' => [
+                    'shipments' => [
+                        [
+                            'id' => '7777777770',
+                            'status' => [
+                                'timestamp' => '2023-03-02T07:53:47Z',
+                                'location' => [
+                                    'address' => [
+                                        'addressLocality' => 'Oderweg 2, AMSTERDAM',
+                                        'postalCode' => '1043 AE',
+                                        'countryCode' => 'NL'
+                                    ]
+                                ],
+                                'statusCode' => 'delivered',
+                                'status' => 'Delivered',
+                                'description' => 'The shipment is pending completion of customs inspection.'
+                            ],
+                        ]
+                    ]
+                ],
+                'expected' => [
+                    'tracking_number' => '7777777770',
+                    'status' => 'delivered',
+                    'location' => 'Oderweg 2, AMSTERDAM',
+                    'estimated_delivery' => null,
+                    'history' => json_encode([
+                        [
+                            'timestamp' => '2023-03-02 07:53:47',
+                            'status' => 'delivered',
+                            'location_description' => 'Oderweg 2, AMSTERDAM',
+                            'description' => 'The shipment is pending completion of customs inspection.'
+                        ],
                     ]),
                 ],
             ],

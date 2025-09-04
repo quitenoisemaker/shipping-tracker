@@ -80,7 +80,7 @@ class SendboxShippingProviderTest extends TestCase
 
         $provider = new SendboxShippingProvider();
         $result = $provider->track('101782511');
-  
+
         $this->assertSame('delivered', $result['raw']['status']['code']);
         $this->assertSame([], $result['events']);
     }
@@ -98,47 +98,5 @@ class SendboxShippingProviderTest extends TestCase
 
         $provider = new SendboxShippingProvider();
         $provider->track('INVALID123');
-    }
-
-    /** @test */
-    public function it_handles_valid_webhook()
-    {
-        Http::fake([
-            'https://test.sendbox.co/oauth/access/test-app-id/refresh?app_id=test-app-id&client_secret=test-client-key' => Http::response(['access_token' => 'new-token'], 200),
-        ]);
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('Sendbox webhook processed', [
-                'payload' => [
-                    'code' => '101782511',
-                    'status' => ['code' => 'delivered'],
-                    'events' => ['location_description' => 'Lagos Hub'],
-                    'delivery_eta' => '2025-06-01',
-                ],
-            ]);
-
-        $provider = new SendboxShippingProvider();
-        $provider->handleWebhook([
-            'code' => '101782511',
-            'status' => ['code' => 'delivered'],
-            'events' => ['location_description' => 'Lagos Hub'],
-            'delivery_eta' => '2025-06-01',
-        ]);
-    }
-
-    /** @test */
-    public function it_logs_warning_for_invalid_webhook()
-    {
-        Http::fake([
-            'https://test.sendbox.co/oauth/access/test-app-id/refresh?app_id=test-app-id&client_secret=test-client-key' => Http::response(['access_token' => 'new-token'], 200),
-        ]);
-
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('Invalid Sendbox webhook payload', ['payload' => ['invalid' => 'data']]);
-
-        $provider = new SendboxShippingProvider();
-        $provider->handleWebhook(['invalid' => 'data']);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Quitenoisemaker\ShippingTracker\Listeners;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Quitenoisemaker\ShippingTracker\Models\Shipment;
@@ -23,6 +24,7 @@ class HandleShippingWebhook implements ShouldQueue
             match ($provider) {
                 'sendbox' => $this->handleSendbox($webhook),
                 'cargoplug' => $this->handleCargoplug($webhook),
+                'dhl' => $this->handleDHL($webhook),
                 default => Log::warning("Unhandled webhook provider: {$provider}"),
             };
         } catch (\Exception $e) {
@@ -123,22 +125,46 @@ class HandleShippingWebhook implements ShouldQueue
         if ($trackingNumber && $rawStatus) {
             try {
                 $status = StatusMapper::normalize('dhl', $rawStatus);
+
+                // Prepare the new event
+                $newEvent = [
+                    'timestamp' => isset($shipmentData['status']['timestamp'])
+                        ? date('Y-m-d H:i:s', strtotime($shipmentData['status']['timestamp']))
+                        : null,
+                    'status' => isset($shipmentData['status']['status'])
+                        ? StatusMapper::normalize('dhl', $shipmentData['status']['statusCode'])
+                        : null,
+                    'location_description' => $shipmentData['status']['location']['address']['addressLocality'] ?? null,
+                    'description' => $shipmentData['status']['description'] ?? null,
+                ];
+
+                // Fetch existing history (already stored in DB, if any)
+                $existingHistory = Shipment::where('tracking_number', $trackingNumber)
+                    ->where('provider', 'dhl')
+                    ->value('history') ?? [];
+
+                // Ensure it's an array (json column cast can sometimes return null)
+                if (!is_array($existingHistory)) {
+                    $existingHistory = [];
+                }
+
+                // Append new event if it’s not already the last one
+                $history = $existingHistory;
+                $lastEvent = end($history);
+                if ($lastEvent !== $newEvent) {
+                    $history[] = $newEvent;
+                }
+
                 Shipment::updateOrCreate(
                     ['tracking_number' => $trackingNumber, 'provider' => 'dhl'],
                     [
                         'status' => $status,
                         'location' => $shipmentData['status']['location']['address']['addressLocality'] ?? null,
                         'estimated_delivery' => $shipmentData['estimatedDeliveryDate'] ?? null,
-                        'history' => collect($shipmentData['status'] ?? [])->map(function ($event) {
-                            $eventStatus = $event['status'] ?? null;
-                            return [
-                                'timestamp' => $event['timestamp'] ?? null,
-                                'status' => $eventStatus ? StatusMapper::normalize('dhl', $eventStatus) : null,
-                                'location_description' => $event['location']['address']['addressLocality'] ?? null,
-                            ];
-                        })->toArray(),
+                        'history' => $history,
                     ]
                 );
+
                 Log::info('DHL shipment updated', [
                     'tracking_number' => $trackingNumber,
                     'status' => $status,

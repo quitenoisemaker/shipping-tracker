@@ -50,6 +50,7 @@ abstract class TestCase extends Orchestra
 
         $app['config']->set('shipping-tracker.cargoplug.required_webhook_fields', ['tracking_number', 'status']);
         $app['config']->set('shipping-tracker.sendbox.required_webhook_fields', ['events', 'status']);
+        $app['config']->set('shipping-tracker.dhl.required_webhook_fields', ['scope', 'self']);
     }
 
     /**

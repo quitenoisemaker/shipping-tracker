@@ -12,6 +12,7 @@ use Quitenoisemaker\ShippingTracker\Exceptions\ShippingException;
 use Quitenoisemaker\ShippingTracker\Providers\SendboxShippingProvider;
 use Quitenoisemaker\ShippingTracker\Providers\CargoplugShippingProvider;
 use Mockery;
+use Quitenoisemaker\ShippingTracker\Providers\DhlShippingProvider;
 
 class ShippingTrackerTest extends TestCase
 {
@@ -30,6 +31,7 @@ class ShippingTrackerTest extends TestCase
             'shipping-tracker.providers' => [
                 'cargoplug' => CargoplugShippingProvider::class,
                 'sendbox' => SendboxShippingProvider::class,
+                'dhl' => DhlShippingProvider::class,
             ],
             'shipping-tracker.cargoplug.base_url' => 'https://test.getcargoplug.com',
             'shipping-tracker.cargoplug.secret_key' => 'secret',
@@ -37,6 +39,8 @@ class ShippingTrackerTest extends TestCase
             'shipping-tracker.sendbox.base_url' => 'https://test.sendbox.co',
             'shipping-tracker.sendbox.app_id' => 'test-app-id',
             'shipping-tracker.sendbox.client_key' => 'test-client-key',
+            'shipping-tracker.dhl.base_url' => 'https://test.dhl.com',
+            'shipping-tracker.dhl.api_key' => 'test-api-key',
         ]);
 
         Http::fake([
@@ -67,6 +71,8 @@ class ShippingTrackerTest extends TestCase
 
         $tracker->use('cargoplug');
         $this->assertInstanceOf(CargoplugShippingProvider::class, $tracker->getProvider());
+        $tracker->use('dhl');
+        $this->assertInstanceOf(DhlShippingProvider::class, $tracker->getProvider());
     }
 
     /** @test */
@@ -119,15 +125,29 @@ class ShippingTrackerTest extends TestCase
                 'events' => [],
                 'delivery_eta' => '2025-05-05',
             ], 200),
+            'https://test.dhl.com/track/shipments?trackingNumber=DHL123' => Http::response([
+                'shipments' => [
+                    [
+                        'id' => 'DHL123',
+                        'status' => [
+                            'statusCode' => 'delivered',
+                            'description' => 'Delivered',
+                        ],
+                        'events' => [],
+                    ]
+                ]
+            ], 200),
         ]);
 
         $tracker = app(ShippingTracker::class);
         $results = [];
         $results['CP123'] = $tracker->use('cargoplug')->track('CP123');
         $results['SB456'] = $tracker->use('sendbox')->track('SB456');
+        $results['DHL123'] = $tracker->use('dhl')->track('DHL123');
 
         $this->assertSame('in_transit', $results['CP123']['status']);
         $this->assertSame('delivered', $results['SB456']['raw']['status']['code']);
+        $this->assertSame('delivered', $results['DHL123']['status']);
     }
 
     // ShippingTrackerTest.php

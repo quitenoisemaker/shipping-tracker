@@ -74,6 +74,6 @@ class WebhookControllerTest extends TestCase
     public function it_throws_exception_for_invalid_provider()
     {
         $response = $this->postJson('/api/shipping/webhooks/invalid', ['tracking_number' => '101782511']);
-        $response->assertStatus(400)->assertJson(['message' => 'Invalid provider: invalid']);
+        $response->assertStatus(400)->assertJson(['message' => 'Webhook processing failed for invalid: Invalid provider: invalid']);
     }
 }

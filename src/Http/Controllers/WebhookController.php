@@ -51,7 +51,7 @@ class WebhookController extends Controller
         } catch (\Exception $e) {
             // If the webhook processing fails, log the error and return a 400 status code
             Log::error("Webhook processing failed for {$provider}: {$e->getMessage()}");
-            return response()->json(['message' => "Invalid provider: {$provider}"], 400);
+            return response()->json(['message' => "Webhook processing failed for {$provider}: {$e->getMessage()}"], 400);
         }
 
         // If everything is successful, return a 200 status code
