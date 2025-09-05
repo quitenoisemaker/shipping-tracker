@@ -30,7 +30,7 @@ class HandleShippingWebhookTest extends TestCase
             'shipping-tracker.sendbox.base_url' => 'https://test.sendbox.co',
             'shipping-tracker.sendbox.app_id' => 'test-app-id',
             'shipping-tracker.sendbox.client_key' => 'test-client-key',
-            'shipping-tracker.dhl.base_url' => 'https://test.dhl.com',
+            'shipping-tracker.dhl.base_url' => 'https://test.api-eu.dhl.com',
             'shipping-tracker.dhl.api_key' => 'test-api-key',
         ]);
         Cache::flush(); // Clear cache to prevent interference

@@ -3,7 +3,6 @@
 namespace Quitenoisemaker\ShippingTracker\Tests;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Quitenoisemaker\ShippingTracker\Tests\TestCase;
 use Quitenoisemaker\ShippingTracker\Providers\SendboxShippingProvider;

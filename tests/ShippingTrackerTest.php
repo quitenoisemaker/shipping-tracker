@@ -39,7 +39,7 @@ class ShippingTrackerTest extends TestCase
             'shipping-tracker.sendbox.base_url' => 'https://test.sendbox.co',
             'shipping-tracker.sendbox.app_id' => 'test-app-id',
             'shipping-tracker.sendbox.client_key' => 'test-client-key',
-            'shipping-tracker.dhl.base_url' => 'https://test.dhl.com',
+            'shipping-tracker.dhl.base_url' => 'https://test.api-eu.dhl.com',
             'shipping-tracker.dhl.api_key' => 'test-api-key',
         ]);
 
@@ -125,7 +125,7 @@ class ShippingTrackerTest extends TestCase
                 'events' => [],
                 'delivery_eta' => '2025-05-05',
             ], 200),
-            'https://test.dhl.com/track/shipments?trackingNumber=DHL123' => Http::response([
+            'https://test.api-eu.dhl.com/track/shipments?trackingNumber=DHL123' => Http::response([
                 'shipments' => [
                     [
                         'id' => 'DHL123',

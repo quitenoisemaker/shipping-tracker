@@ -5,6 +5,7 @@ namespace Quitenoisemaker\ShippingTracker\Providers;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Quitenoisemaker\ShippingTracker\Exceptions\ShippingException;
 use Quitenoisemaker\ShippingTracker\Support\TrackingResponseFormatter;
 use Quitenoisemaker\ShippingTracker\Contracts\ShippingProviderInterface;
 
@@ -29,11 +30,7 @@ class DhlShippingProvider implements ShippingProviderInterface
                     'trackingNumber' => $trackingNumber,
                 ]);
             if ($response->failed()) {
-                Log::error('DHL tracking error', [
-                    'tracking_number' => $trackingNumber,
-                    'error' => $response->json(),
-                ]);
-                throw new \Exception('DHL tracking failed');
+                throw new ShippingException('DHL tracking failed');
             }
             $result = $response->json('shipments.0');
             return TrackingResponseFormatter::formatDHL($result);
