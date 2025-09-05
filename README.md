@@ -79,7 +79,7 @@ return [
     ],
     'dhl' => [
         'base_url' => env('DHL_BASE_URL', 'https://api-eu.dhl.com'),
-        'api_key' => env('DHL_API_KEY')
+        'api_key' => env('DHL_API_KEY'),
     ],
 ];
 ```
@@ -147,16 +147,16 @@ dd($history->history);
 ### Handling Webhooks
 
 Webhooks are validated for required fields.
- 
-  Default required fields for Cargoplug and Sendbox:
-    - tracking_number
-    - status
- 
-  DHL specific required field:
-    - self (the subscription URL, always starting with https://api-eu.dhl.com)
-    - scope 
- 
-  The package is extensible for signature-based validation for providers that support webhook signing.
+ *
+ * Default required fields for Cargoplug and Sendbox:
+ *   - tracking_number
+ *   - status
+ *
+ * DHL specific required field:
+ *   - self (the subscription URL, always starting with https://api-eu.dhl.com)
+ *   - scope 
+ *
+ * The package is extensible for signature-based validation for providers that support webhook signing.
 
 
 
@@ -172,8 +172,7 @@ Register the webhook URL (e.g., `https://your-app.com/api/shipping/webhooks/send
 ShippingTracker normalizes provider statuses using `StatusMapper` in both webhooks and API tracking (`track` method). It handles case and space variations (e.g., Cargoplug's "In Transit" → `in_transit`, "PAID" → `paid`). Examples:
 - **Sendbox**: `delivery_started` → `in_transit`, `delivered` → `delivered`
 - **Cargoplug**: `received_abroad` → `in_transit`, `In Transit` → `in_transit`, `delivered` → `delivered`
-- **DHL**: `CUSTOMER PICKUP` → `delivered`, `PACKAGE SCREENED SUCCESSFULLY` → `in_transit`, `ATTEMPTED DELIVERY` → `pending`
-Customize mappings in `config/shipping-tracker.php` under `status_map`.
+- **DHL**: `CUSTOMER PICKUP` → `delivered`, `PACKAGE SCREENED SUCCESSFULLY` → `in_transit`, `ATTEMPTED DELIVERY` → `on_hold`
 
 ## Extending the Package
 Create a custom provider:
