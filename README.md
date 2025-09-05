@@ -79,8 +79,7 @@ return [
     ],
     'dhl' => [
         'base_url' => env('DHL_BASE_URL', 'https://api-eu.dhl.com'),
-        'api_key' => env('DHL_API_KEY'),
-        'api_secret' => env('DHL_API_SECRET'),
+        'api_key' => env('DHL_API_KEY')
     ],
 ];
 ```
@@ -147,20 +146,18 @@ dd($history->history);
 
 ### Handling Webhooks
 
-/**
 Webhooks are validated for required fields.
- *
- * Default required fields for Cargoplug and Sendbox:
- *   - tracking_number
- *   - status
- *
- * DHL specific required field:
- *   - self (the subscription URL, always starting with https://api-eu.dhl.com)
- *   - scope 
- *
- * The package is extensible for signature-based validation for providers
- * that support webhook signing.
- */
+ 
+  Default required fields for Cargoplug and Sendbox:
+    - tracking_number
+    - status
+ 
+  DHL specific required field:
+    - self (the subscription URL, always starting with https://api-eu.dhl.com)
+    - scope 
+ 
+  The package is extensible for signature-based validation for providers that support webhook signing.
+
 
 
 ```php
