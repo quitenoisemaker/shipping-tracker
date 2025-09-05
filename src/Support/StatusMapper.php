@@ -170,7 +170,6 @@ class StatusMapper
             "Shipment processed" => "in_transit",
             "in customs" => "on_hold",
             "out for delivery" => "in_transit",
-
         ],
 
     ];

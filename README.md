@@ -2,14 +2,15 @@
 
 [![CI Pipeline](https://github.com/quitenoisemaker/shipping-tracker/actions/workflows/test.yml/badge.svg)](https://github.com/quitenoisemaker/shipping-tracker/actions/workflows/test.yml)
 
-A Laravel package to simplify shipment tracking and webhook handling for Africa and Europe logistics. Supports providers like Cargoplug and Sendbox, with an open-source spirit welcoming contributions.
+A Laravel package to simplify shipment tracking and webhook handling for Africa and Europe logistics. Supports providers like Cargoplug, Sendbox, and DHL, with an open-source spirit welcoming contributions.
 
 ## Features
 - Track shipments with a unified interface.
 - Handle webhooks from couriers effortlessly.
-- Store tracking history in a `shipping_webhooks` table.
+- Store tracking history in a `shippings` table.
 - Queue webhook processing with the `database` driver.
 - Extensible for custom providers.
+- Normalize provider-specific statuses (e.g., "In transit" -> `in_transit`)
 
 ## Requirements
 - PHP 8.1, 8.2, or 8.3
@@ -42,17 +43,20 @@ A Laravel package to simplify shipment tracking and webhook handling for Africa 
    CARGOPLUG_API_URL=https://api.getcargoplug.com/api/v1
    CARGOPLUG_SECRET_KEY=your_secret_key
    CARGOPLUG_CLIENT_KEY=your_client_key
+
+   DHL_BASE_URL=https://api-eu.dhl.com
+   DHL_API_KEY=your_api_key
    ```
 
 ## Configuration
 
 The `config/shipping-tracker.php` file allows you to:
 
-- Set the default provider (e.g., `sendbox`).
+- Set the default provider (e.g., `dhl`).
 - Define provider classes and their API credentials.
 - Add new providers by mapping keys to their implementation classes.
 
-**Note**: Current providers (Sendbox and Cargoplug) do not use tracking number prefixes or webhook signatures. The package caches successful provider matches for known tracking numbers to optimize tracking. New tracking numbers trigger a full provider search, and explicit provider selection via `use()` is respected without affecting the cache.
+**Note**: Providers like (Sendbox and Cargoplug) do not use tracking number prefixes or webhook signatures. The package caches successful provider matches for known tracking numbers to optimize tracking. New tracking numbers trigger a full provider search, and explicit provider selection via `use()` is respected without affecting the cache.
 
 Example:
 
@@ -72,6 +76,11 @@ return [
         'base_url' => env('CARGOPLUG_API_URL', 'https://api.getcargoplug.com/api/v1'),
         'secret_key' => env('CARGOPLUG_SECRET_KEY'),
         'client_key' => env('CARGOPLUG_CLIENT_KEY'),
+    ],
+    'dhl' => [
+        'base_url' => env('DHL_BASE_URL', 'https://api-eu.dhl.com'),
+        'api_key' => env('DHL_API_KEY'),
+        'api_secret' => env('DHL_API_SECRET'),
     ],
 ];
 ```
@@ -138,7 +147,21 @@ dd($history->history);
 
 ### Handling Webhooks
 
-Webhooks are validated for required fields (`tracking_number`, `status`). The package is extensible for signature-based validation.
+/**
+Webhooks are validated for required fields.
+ *
+ * Default required fields for Cargoplug and Sendbox:
+ *   - tracking_number
+ *   - status
+ *
+ * DHL specific required field:
+ *   - self (the subscription URL, always starting with https://api-eu.dhl.com)
+ *   - scope 
+ *
+ * The package is extensible for signature-based validation for providers
+ * that support webhook signing.
+ */
+
 
 ```php
 Route::prefix('api/shipping')->group(function () {
@@ -150,8 +173,9 @@ Register the webhook URL (e.g., `https://your-app.com/api/shipping/webhooks/send
 
 ## Status Normalization
 ShippingTracker normalizes provider statuses using `StatusMapper` in both webhooks and API tracking (`track` method). It handles case and space variations (e.g., Cargoplug's "In Transit" → `in_transit`, "PAID" → `paid`). Examples:
-- Sendbox: `delivery_started` → `in_transit`, `delivered` → `delivered`
-- Cargoplug: `received_abroad` → `in_transit`, `In Transit` → `in_transit`, `delivered` → `delivered`
+- **Sendbox**: `delivery_started` → `in_transit`, `delivered` → `delivered`
+- **Cargoplug**: `received_abroad` → `in_transit`, `In Transit` → `in_transit`, `delivered` → `delivered`
+- **DHL**: `CUSTOMER PICKUP` → `delivered`, `PACKAGE SCREENED SUCCESSFULLY` → `in_transit`, `ATTEMPTED DELIVERY` → `pending`
 Customize mappings in `config/shipping-tracker.php` under `status_map`.
 
 ## Extending the Package
@@ -217,7 +241,13 @@ php artisan test
 ```
 
 ## Changelog
-### v1.0.0 (TBD)
+
+### v1.2.0 (Current)
+
+- Added DHL integration for tracking and webhook handling.
+- Normalized DHL statuses (e.g., "DELIVERED" → `delivered`, "OUT FOR DELIVERY" → `in_transit`).
+
+### v1.0.0
 - Initial release.
 - Supports Cargoplug and Sendbox providers.
 - Features tracking, webhook handling, and history storage.
