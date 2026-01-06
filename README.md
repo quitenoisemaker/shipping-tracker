@@ -5,12 +5,14 @@
 A Laravel package to simplify shipment tracking and webhook handling for Africa and Europe logistics. Supports providers like Cargoplug, Sendbox, and DHL, with an open-source spirit welcoming contributions.
 
 ## Features
-- Track shipments with a unified interface.
+- Track shipments with a unified interface via **DTOs**.
 - Handle webhooks from couriers effortlessly.
 - Store tracking history in a `shippings` table.
 - Queue webhook processing with the `database` driver.
 - Extensible for custom providers.
 - Normalize provider-specific statuses (e.g., "In transit" -> `in_transit`)
+- **[New]** CLI commands for tracking and health checks.
+- **[New]** `FakeShippingProvider` for easy testing.
 
 ## Requirements
 - PHP 8.1, 8.2, or 8.3
@@ -107,7 +109,17 @@ Explicitly specify a provider to bypass automatic resolution and caching:
 $result = ShippingTracker::use('cargoplug')->track('CP987654321');
 ```
 
-The response includes: `tracking_number`, `status`, `location`, `estimated_delivery`, `events`, and `raw`.
+The response is a strict `TrackingResult` object, not an array.
+```php
+echo $result->trackingNumber;
+echo $result->status; // 'in_transit'
+echo $result->provider; // 'sendbox'
+// $result->events is a Collection of TrackingEvent objects
+foreach ($result->events as $event) {
+    echo $event->status;
+    echo $event->timestamp;
+}
+```
 
 ### Tracking Multiple Shipments
 
@@ -123,6 +135,27 @@ try {
 ```
 
 The response is an array keyed by tracking number, with results or error messages.
+
+### CLI Commands (New in v2.0)
+
+**Track a shipment directly from your terminal:**
+```bash
+php artisan shipping:track SB123456789 --provider=sendbox
+```
+
+**Check API Health:**
+Validate your configuration and API keys for all providers:
+```bash
+php artisan shipping:check-status
+```
+
+### Testing with Fakes
+You can use the `FakeShippingProvider` to test your application without making real API calls.
+
+```php
+// In your test or local dev
+ShippingTracker::use('fake')->track('ANY-NUMBER');
+```
 
 ### Tracking History
 
@@ -141,6 +174,7 @@ Or use the convenience method:
 
 ```php
 $history = ShippingTracker::getHistory('SB123456789');
+// Returns a Shipment model. The 'history' attribute is cast to an array/json.
 dd($history->history);
 ```
 
@@ -238,18 +272,21 @@ php artisan test
 
 ## Changelog
 
-### v1.2.0 (Current)
+### v2.0.0 (Latest)
+- **[Breaking]** `track()` now returns `TrackingResult` DTO instead of an array.
+- Added `shipping:track` and `shipping:check-status` Artisan commands.
+- Added `FakeShippingProvider` for testing.
+- Added `checkHealth()` to `ShippingProviderInterface`.
+- Implemented lazy loading for providers to improve robustness.
 
+### v1.2.0
 - Added DHL integration for tracking and webhook handling.
-- Normalized DHL statuses (e.g., "DELIVERED" → `delivered`, "OUT FOR DELIVERY" → `in_transit`).
+- Normalized DHL statuses.
 
 ### v1.0.0
 - Initial release.
 - Supports Cargoplug and Sendbox providers.
 - Features tracking, webhook handling, and history storage.
-- Uses `database` queue driver with `jobs` and `shipping_webhooks` tables.
-
-Future updates (e.g., DHL support) will be listed here.
 
 ## Contributing
 We love open source! Join us by contributing at [github.com/quitenoisemaker/shipping-tracker](https://github.com/quitenoisemaker/shipping-tracker). See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit issues or pull requests.
