@@ -29,7 +29,7 @@ interface ShippingProviderInterface
      *     raw?: mixed
      * }
      */
-    public function track(string $trackingNumber): mixed;
+    public function track(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult;
 
     /**
      * Handle webhook callback from the shipping provider.

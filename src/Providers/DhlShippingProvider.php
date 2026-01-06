@@ -22,7 +22,13 @@ class DhlShippingProvider implements ShippingProviderInterface
         $this->apiKey = config('shipping-tracker.dhl.api_key');
     }
 
-    public function track(string $trackingNumber): array
+    public function checkHealth(): bool
+    {
+         // Simple health check: check if we have base URL and API key
+         return !empty($this->baseUrl) && !empty($this->apiKey);
+    }
+
+    public function track(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult
     {
         try {
             $response = Http::withHeaders(['DHL-API-Key' => $this->apiKey])

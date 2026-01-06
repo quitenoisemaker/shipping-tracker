@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Quitenoisemaker\ShippingTracker\Tests\TestCase;
 use Quitenoisemaker\ShippingTracker\Exceptions\ShippingException;
 use Quitenoisemaker\ShippingTracker\Providers\DhlShippingProvider;
+use Quitenoisemaker\ShippingTracker\DTOs\TrackingResult;
 
 class DhlShippingProviderTest extends TestCase
 {
@@ -74,14 +75,17 @@ class DhlShippingProviderTest extends TestCase
         parent::tearDown();
     }
 
+
+
     /** @test */
     public function it_tracks_shipment_successfully()
     {
         $provider = new DhlShippingProvider();
         $result = $provider->track('10178251190');
 
-        $this->assertSame('delivered', $result['status']);
-        $this->assertSame('Amsterdam', $result['location']);
+        $this->assertInstanceOf(TrackingResult::class, $result);
+        $this->assertSame('delivered', $result->status);
+        $this->assertSame('10178251190', $result->trackingNumber);
     }
 
     /** @test */

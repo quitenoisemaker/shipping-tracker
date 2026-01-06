@@ -240,7 +240,7 @@ class HandleShippingWebhookTest extends TestCase
         $provider = new CargoplugShippingProvider();
         $result = $provider->track('101782511');
 
-        $this->assertEquals('in_transit', $result['status']);
-        $this->assertEquals('paid', $result['events'][0]['status']);
+        $this->assertEquals('in_transit', $result->status);
+        $this->assertEquals('paid', $result->events[0]->status);
     }
 }

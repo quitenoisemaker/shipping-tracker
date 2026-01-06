@@ -40,6 +40,12 @@ class SendboxShippingProvider implements ShippingProviderInterface
 
     protected function authenticate(): string
     {
+        $accessToken = config('shipping-tracker.sendbox.access_token');
+
+        if ($accessToken) {
+            return $accessToken;
+        }
+
         return Cache::remember('sendbox_access_token', now()->addHour(), function () {
             $appId = config('shipping-tracker.sendbox.app_id');
             $clientKey = config('shipping-tracker.sendbox.client_key');
@@ -64,7 +70,7 @@ class SendboxShippingProvider implements ShippingProviderInterface
         });
     }
 
-    public function track(string $trackingNumber): array
+    public function track(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult
     {
         try {
             $response = Http::withHeaders([
@@ -78,7 +84,7 @@ class SendboxShippingProvider implements ShippingProviderInterface
             if ($response->failed()) {
                 throw new ShippingException('Sendbox tracking failed: ' . ($response->json('message') ?? 'Unknown error'));
             }
-            return TrackingResponseFormatter::formatSendbox($response->json());
+            return TrackingResponseFormatter::formatSendbox($response->json(), $trackingNumber);
         } catch (\Exception $e) {
             Log::error('Sendbox tracking error', [
                 'tracking_number' => $trackingNumber,
@@ -88,10 +94,20 @@ class SendboxShippingProvider implements ShippingProviderInterface
         }
     }
 
+    public function checkHealth(): bool
+    {
+        try {
+            $this->authenticate();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     public function handleWebhook(array $payload): void
     {
-        // Validate or process payload
-        if (empty($payload['id']) || empty($payload['status']['code'])) {
+        // Validate based on config: required_webhook_fields => ['events', 'status']
+        if (empty($payload['events']) || empty($payload['status'])) {
             Log::warning('Invalid Sendbox webhook payload', ['payload' => $payload]);
             return;
         }

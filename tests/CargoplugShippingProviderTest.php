@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Quitenoisemaker\ShippingTracker\Tests\TestCase;
 use Quitenoisemaker\ShippingTracker\Providers\CargoplugShippingProvider;
 use Quitenoisemaker\ShippingTracker\Exceptions\ShippingException;
+use Quitenoisemaker\ShippingTracker\DTOs\TrackingResult;
 
 class CargoplugShippingProviderTest extends TestCase
 {
@@ -47,6 +48,8 @@ class CargoplugShippingProviderTest extends TestCase
         parent::tearDown();
     }
 
+
+
     /** @test */
     public function it_tracks_shipment_successfully()
     {
@@ -73,10 +76,10 @@ class CargoplugShippingProviderTest extends TestCase
         $provider = app(CargoplugShippingProvider::class);
         $result = $provider->track('101782511');
 
-        $this->assertSame('101782511', $result['tracking_number']);
-        $this->assertSame('in_transit', $result['status']);
-        $this->assertSame('Package', $result['description']);
-        $this->assertSame([], $result['events']);
+        $this->assertInstanceOf(TrackingResult::class, $result);
+        $this->assertSame('101782511', $result->trackingNumber);
+        $this->assertSame('in_transit', $result->status);
+        $this->assertSame('Package', $result->description);
     }
 
     /** @test */

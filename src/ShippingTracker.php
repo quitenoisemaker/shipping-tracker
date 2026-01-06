@@ -10,51 +10,69 @@ use Quitenoisemaker\ShippingTracker\Contracts\ShippingProviderInterface;
 
 class ShippingTracker
 {
+    protected ?string $selectedProviderKey = null;
     protected ?ShippingProviderInterface $provider = null;
 
     public function __construct()
     {
-        $this->setProvider(config('shipping-tracker.default'));
+        $this->selectedProviderKey = config('shipping-tracker.default');
     }
 
     public function use(string $providerKey): self
     {
-        $this->setProvider($providerKey);
+        $this->selectedProviderKey = $providerKey;
+        $this->provider = null; // Reset provider instance to force re-resolution if changed
         return $this;
     }
 
-    protected function setProvider(?string $key): void
+    protected function resolveSelectedProvider(): void
     {
-        if (!$key) {
+        if ($this->provider) {
             return;
         }
+
+        if (!$this->selectedProviderKey) {
+            return;
+        }
+        
         $providers = config('shipping-tracker.providers', []);
 
-        if (!isset($providers[$key])) {
-            throw new \Exception("Shipping provider [$key] not configured.");
+        if (!isset($providers[$this->selectedProviderKey])) {
+            throw new \Exception("Shipping provider [{$this->selectedProviderKey}] not configured.");
         }
+
         try {
-            $this->provider = app($providers[$key]);
+            $this->provider = app($providers[$this->selectedProviderKey]);
         } catch (\Exception $e) {
-            throw new ShippingException("Failed to initialize provider [$key]: {$e->getMessage()}");
+            throw new ShippingException("Failed to initialize provider [{$this->selectedProviderKey}]: {$e->getMessage()}");
         }
     }
 
-    public function track(string $trackingNumber): array
+    public function track(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult
     {
-        if (!$this->provider) {
-            return $this->resolveProvider($trackingNumber);
+        // Try to instantiate the selected provider (default or explicit)
+        if ($this->selectedProviderKey) {
+            try {
+                $this->resolveSelectedProvider();
+            } catch (\Exception $e) {
+                 Log::warning("Provider [{$this->selectedProviderKey}] failed to initialize or track: {$e->getMessage()}");
+            }
         }
 
-        try {
-            return $this->provider->track($trackingNumber);
-        } catch (\Exception $e) {
-            Log::warning("Pre-selected provider [" . get_class($this->provider) . "] failed for tracking number [$trackingNumber]: {$e->getMessage()}");
-            return $this->resolveProvider($trackingNumber);
+        // If provider is ready, use it
+        if ($this->provider) {
+             try {
+                return $this->provider->track($trackingNumber);
+             } catch (\Exception $e) {
+                Log::warning("Provider [" . get_class($this->provider) . "] failed for tracking number [$trackingNumber]: {$e->getMessage()}");
+                // If it fails, fall through to auto-resolve
+             }
         }
+
+        return $this->resolveProvider($trackingNumber);
     }
 
-    protected function resolveProvider(string $trackingNumber): array
+    protected function resolveProvider(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult
     {
         $providers = config('shipping-tracker.providers', []);
         $triedProviders = [];
@@ -68,7 +86,10 @@ class ShippingTracker
             try {
                 $provider = app()->make($providers[$cachedProviderKey]);
                 $result = $provider->track($trackingNumber);
-                $this->provider = $provider;
+                // We do NOT set $this->provider here permanently effectively, 
+                // or maybe we should? Original code did.
+                $this->provider = $provider; 
+                $this->selectedProviderKey = $cachedProviderKey;
                 return $result;
             } catch (\Exception $e) {
                 Log::warning("Cached provider [$cachedProviderKey] failed for tracking number [$trackingNumber]: {$e->getMessage()}");
@@ -80,10 +101,20 @@ class ShippingTracker
             if ($cachedProviderKey === $key) {
                 continue; // Skip if already tried via cache
             }
+            // Skip the one we already tried if it matched selectedProviderKey
+            if ($this->selectedProviderKey === $key && $this->provider) {
+                 // Actually if $this->provider is set, we wouldn't be here unless it failed.
+                 // So we should surely skip it to avoid retry loop if we just tried it.
+                 continue;
+            }
+
             try {
                 $provider = app()->make($providerClass);
                 $result = $provider->track($trackingNumber);
+                
                 $this->provider = $provider;
+                $this->selectedProviderKey = $key;
+                
                 Cache::put($cacheKey, $key, now()->addDays(7)); // Cache for 7 days
                 Log::info('Provider resolved for tracking number', [
                     'tracking_number' => $trackingNumber,
@@ -105,6 +136,7 @@ class ShippingTracker
 
     public function handleWebhook(array $payload): void
     {
+        $this->resolveSelectedProvider(); // Ensure provider is ready
         if (!$this->provider) {
             throw new ShippingException('No provider selected for webhook handling.');
         }
@@ -113,6 +145,11 @@ class ShippingTracker
 
     public function getProvider(): ?ShippingProviderInterface
     {
+        try {
+            $this->resolveSelectedProvider();
+        } catch (\Exception $e) {
+            // ignore if just getting
+        }
         return $this->provider;
     }
 

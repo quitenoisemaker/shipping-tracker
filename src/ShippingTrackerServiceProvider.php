@@ -38,6 +38,14 @@ class ShippingTrackerServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom(__DIR__ . '/routes/api.php');
 
+
         $this->app->register(EventServiceProvider::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Console\Commands\TrackShipmentCommand::class,
+                Console\Commands\CheckProviderHealthCommand::class,
+            ]);
+        }
     }
 }

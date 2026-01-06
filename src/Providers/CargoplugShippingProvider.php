@@ -57,7 +57,18 @@ class CargoplugShippingProvider implements ShippingProviderInterface
         });
     }
 
-    public function track(string $trackingNumber): array
+    public function checkHealth(): bool
+    {
+        try {
+            // Re-authenticate to check health
+            $this->authenticate();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function track(string $trackingNumber): \Quitenoisemaker\ShippingTracker\DTOs\TrackingResult
     {
         try {
             $response = Http::withToken($this->token)

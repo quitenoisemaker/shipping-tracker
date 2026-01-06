@@ -3,6 +3,9 @@
 namespace Quitenoisemaker\ShippingTracker\Support;
 
 use Illuminate\Support\Arr;
+use Quitenoisemaker\ShippingTracker\DTOs\TrackingResult;
+use Quitenoisemaker\ShippingTracker\DTOs\TrackingEvent;
+use Carbon\Carbon;
 
 class TrackingResponseFormatter
 {
@@ -10,10 +13,18 @@ class TrackingResponseFormatter
      * Format a Sendbox tracking response into a standardized format.
      *
      * @param array $data
-     * @return array
+     * @return TrackingResult
      * @throws \InvalidArgumentException
      */
-    public static function formatSendbox(array $data): array
+    /**
+     * Format a Sendbox tracking response into a standardized format.
+     *
+     * @param array $data
+     * @param string|null $trackingNumber
+     * @return TrackingResult
+     * @throws \InvalidArgumentException
+     */
+    public static function formatSendbox(array $data, ?string $trackingNumber = null): TrackingResult
     {
         if (empty($data)) {
             throw new \InvalidArgumentException('Sendbox response data is empty');
@@ -22,31 +33,38 @@ class TrackingResponseFormatter
         $rawStatus = Arr::get($data, 'status_code', 'unknown');
         $status = StatusMapper::normalize('sendbox', $rawStatus);
 
-        return [
-            'status' => $status,
-            'current_location' => Arr::get($data, 'events.0.location_description', 'Unknown'),
-            'estimated_delivery' => $data['events.delivery_eta'] ?? null,
-            'events' => collect($data['events'] ?? [])->map(function ($event) {
-                $eventStatus = $event['status']['code'] ?? null;
-                return [
-                    'timestamp' => $event['date_created'] ?? null,
-                    'description' => $event['description'] ?? '',
-                    'location' => $event['location_description'] ?? null,
-                    'status' => $eventStatus ? StatusMapper::normalize('sendbox', $eventStatus) : null,
-                ];
-            })->toArray(),
-            'raw' => $data,
-        ];
+        $events = collect($data['events'] ?? [])->map(function ($event) {
+            $eventStatus = $event['status']['code'] ?? null;
+            return new TrackingEvent(
+                status: $eventStatus ? StatusMapper::normalize('sendbox', $eventStatus) : null,
+                description: $event['description'] ?? '',
+                location: $event['location_description'] ?? null,
+                timestamp: isset($event['date_created']) ? Carbon::parse($event['date_created']) : null
+            );
+        });
+
+        // Use provided tracking number, fallback to 'code' in response, fallback to null
+        $finalTrackingNumber = $trackingNumber ?? Arr::get($data, 'code');
+
+        return new TrackingResult(
+            trackingNumber: $finalTrackingNumber,
+            status: $status,
+            provider: 'sendbox',
+            description: null,
+            estimatedDelivery: isset($data['delivery_eta']) ? Carbon::parse($data['delivery_eta']) : null,
+            events: $events,
+            raw: $data
+        );
     }
 
     /**
      * Format a Cargoplug tracking response into a standardized format.
      *
      * @param array $data
-     * @return array
+     * @return TrackingResult
      * @throws \InvalidArgumentException
      */
-    public static function formatCargoplug(array $data): array
+    public static function formatCargoplug(array $data): TrackingResult
     {
         if (empty($data)) {
             throw new \InvalidArgumentException('Cargoplug response data is empty');
@@ -55,30 +73,35 @@ class TrackingResponseFormatter
         $rawStatus = Arr::get($data, 'status', 'unknown');
         $status = StatusMapper::normalize('cargoplug', $rawStatus);
 
-        return [
-            'tracking_number' => Arr::get($data, 'tracking_number', null),
-            'status' => $status,
-            'description' => Arr::get($data, 'description', null), 
-            'estimated_delivery' => $data['expected_delivery_date'] ?? null,
-            'events' => collect($data['history'] ?? [])->map(function ($event) {
-                $eventStatus = $event['status'] ?? null;
-                return [
-                    'timestamp' => $event['order_updated'] ?? null,
-                    'status' => $eventStatus ? StatusMapper::normalize('cargoplug', $eventStatus) : null,
-                ];
-            })->toArray(),
-            'raw' => $data,
-        ];
+        $events = collect($data['history'] ?? [])->map(function ($event) {
+            $eventStatus = $event['status'] ?? null;
+            return new TrackingEvent(
+                status: $eventStatus ? StatusMapper::normalize('cargoplug', $eventStatus) : null,
+                description: null, // Cargoplug history doesn't seem to have description in previous code
+                location: null,
+                timestamp: isset($event['order_updated']) ? Carbon::parse($event['order_updated']) : null
+            );
+        });
+
+        return new TrackingResult(
+            trackingNumber: Arr::get($data, 'tracking_number', null),
+            status: $status,
+            provider: 'cargoplug',
+            description: Arr::get($data, 'description', null),
+            estimatedDelivery: isset($data['expected_delivery_date']) ? Carbon::parse($data['expected_delivery_date']) : null,
+            events: $events,
+            raw: $data
+        );
     }
 
     /**
      * Format a DHL tracking response into a standardized format.
      *
      * @param array $data
-     * @return array
+     * @return TrackingResult
      * @throws \InvalidArgumentException
      */
-    public static function formatDHL(array $data): array
+    public static function formatDHL(array $data): TrackingResult
     {
         if (empty($data)) {
             throw new \InvalidArgumentException('DHL response data is empty');
@@ -94,28 +117,31 @@ class TrackingResponseFormatter
         $status = StatusMapper::normalize('dhl', $rawStatus);
 
         // Build history of events
-        $history = array_map(function ($event) {
-            $raw = $event['statusCode']
+        $events = collect($data['events'] ?? [])->map(function ($event) {
+             $raw = $event['statusCode']
                 ?? $event['status']
                 ?? $event['description']
                 ?? 'unknown';
 
-            return [
-                'timestamp' => $event['timestamp'] ?? '',
-                'status' => StatusMapper::normalize('dhl', $raw),
-                'location_description' => $event['location']['address']['addressLocality']
+             return new TrackingEvent(
+                 status: StatusMapper::normalize('dhl', $raw),
+                 description: $event['description'] ?? null,
+                 location: $event['location']['address']['addressLocality']
                     ?? $event['location']['address']['countryCode']
-                    ?? '',
-            ];
-        }, $data['events'] ?? []);
+                    ?? null,
+                 timestamp: isset($event['timestamp']) ? Carbon::parse($event['timestamp']) : null
+             );
+        });
 
-        // Latest event determines current location
-        $latestEvent = $history[0] ?? null;
-        return [ 
-            'status' => $status,
-            'tracking_number' => $data['id'] ?? null,
-            'location' => $latestEvent['location_description'] ?? 'Unknown',
-            'events' => $history,
-        ];
+        // Latest event determines current location if needed, but TrackingResult has event list.
+        return new TrackingResult(
+            trackingNumber: $data['id'] ?? null,
+            status: $status,
+            provider: 'dhl',
+            description: null,
+            estimatedDelivery: null, // DHL response inspection might reveal this
+            events: $events,
+            raw: $data
+        );
     }
 }
